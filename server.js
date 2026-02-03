@@ -6,11 +6,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configuración de conexión a phpMyAdmin
+
 const db = mysql.createConnection({
     host: 'localhost',
-    user: 'root',      // Usuario por defecto de XAMPP
-    password: '',      // Contraseña por defecto (vacía)
+    user: 'root',      
+    password: '',      
     database: 'sistema_ventas'
 });
 
@@ -31,7 +31,7 @@ app.post('/ventas', (req, res) => {
     });
 });
 
-// RUTA: Reporte de Monto por Vendedor
+
 app.get('/reporte-vendedores', (req, res) => {
     const sql = "SELECT nombre_vendedor, SUM(precio * kilos) as monto_total FROM ventas GROUP BY nombre_vendedor";
     db.query(sql, (err, results) => {
@@ -40,7 +40,7 @@ app.get('/reporte-vendedores', (req, res) => {
     });
 });
 
-// RUTA: Registro de ventas (Fechas y Kilos)
+
 app.get('/ventas', (req, res) => {
     const sql = "SELECT * FROM ventas ORDER BY fecha_alta DESC";
     db.query(sql, (err, results) => {
