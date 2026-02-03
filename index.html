@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Módulo de Ingreso - Sistema de Ventas</title>
+    <style>
+        :root { --primary: #2c3e50; --secondary: #27ae60; --bg: #f4f7f6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 90%; max-width: 1000px; }
+        h1, h2 { color: var(--primary); text-align: center; }
+        
+        /* Formulario */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        button { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-save { background: var(--secondary); color: white; width: 100%; margin-top: 10px; }
+        .btn-save:hover { background: #219150; }
+        
+        /* Reportes */
+        .actions { display: flex; gap: 10px; justify-content: center; margin: 30px 0; }
+        .btn-report { background: var(--primary); color: white; }
+        
+        /* Tablas */
+        .table-container { overflow-x: auto; margin-top: 20px; }
+        table { border-collapse: collapse; width: 100%; background: white; }
+        th, td { text-align: left; padding: 12px; border-bottom: 1px solid #eee; }
+        th { background: var(--primary); color: white; }
+        tr:hover { background-color: #f9f9f9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Módulo de Ingreso de Productos</h1>
+    
+    <form id="formVenta">
+        <div class="form-grid">
+            <input type="text" id="grupo" placeholder="Grupo (Ej: Frutas)" required>
+            <input type="text" id="producto" placeholder="Producto (Ej: Naranjas)" required>
+            <input type="number" id="precio" placeholder="Precio (€)" step="0.01" required>
+            <input type="date" id="fecha" required>
+            <input type="number" id="kilos" placeholder="Kilos" required>
+            <input type="text" id="vendedor" placeholder="Nombre Vendedor" required>
+        </div>
+        <button type="submit" class="btn-save">Registrar Venta</button>
+    </form>
+
+    <hr>
+
+    <div class="actions">
+        <button class="btn-report" onclick="obtenerReporteVendedores()">Monto por Vendedor</button>
+        <button class="btn-report" onclick="obtenerRegistroVentas()">Registro de Ventas (Kilos/Fechas)</button>
+    </div>
+
+    <div id="vistaReporte" class="table-container">
+        <p style="text-align: center; color: #888;">Selecciona un reporte para visualizar los datos.</p>
+    </div>
+</div>
+
+<script>
+    const API_URL = 'http://localhost:3000';
+
+    // 1. Lógica para Registrar Venta (POST)
+    document.getElementById('formVenta').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const data = {
+            grupo: document.getElementById('grupo').value,
+            producto: document.getElementById('producto').value,
+            precio: parseFloat(document.getElementById('precio').value),
+            fecha: document.getElementById('fecha').value,
+            kilos: parseInt(document.getElementById('kilos').value),
+            vendedor: document.getElementById('vendedor').value
+        };
+
+        try {
+            const response = await fetch(`${API_URL}/ventas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                alert('¡Éxito! Venta guardada en la base de datos.');
+                e.target.reset();
+                obtenerRegistroVentas(); // Actualiza la vista automáticamente
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('No se pudo conectar con el servidor Node.js');
+        }
+    });
+
+    // 2. Reporte: Monto de venta por cada vendedor
+    async function obtenerReporteVendedores() {
+        const res = await fetch(`${API_URL}/reporte-vendedores`);
+        const datos = await res.json();
+        
+        let html = `
+            <h2>Resumen de Ventas por Vendedor</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vendedor</th>
+                        <th>Monto Total Acumulado</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
+        datos.forEach(row => {
+            html += `
+                <tr>
+                    <td><strong>${row.nombre_vendedor}</strong></td>
+                    <td>${row.monto_total.toLocaleString('es-ES', {style: 'currency', currency: 'EUR'})}</td>
+                </tr>`;
+        });
+
+        document.getElementById('vistaReporte').innerHTML = html + `</tbody></table>`;
+    }
+
+    // 3. Reporte: Registro de ventas (Fechas y Kilos)
+    async function obtenerRegistroVentas() {
+        const res = await fetch(`${API_URL}/ventas`);
+        const datos = await res.json();
+        
+        let html = `
+            <h2>Historial de Ventas Realizadas</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Producto</th>
+                        <th>Kilos Vendidos</th>
+                        <th>Vendedor</th>
+                        <th>Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+        
+        datos.forEach(row => {
+            const subtotal = row.precio * row.kilos;
+            html += `
+                <tr>
+                    <td>${new Date(row.fecha_alta).toLocaleDateString()}</td>
+                    <td>${row.nombre_producto}</td>
+                    <td>${row.kilos} kg</td>
+                    <td>${row.nombre_vendedor}</td>
+                    <td>${subtotal.toFixed(2)}€</td>
+                </tr>`;
+        });
+
+        document.getElementById('vistaReporte').innerHTML = html + `</tbody></table>`;
+    }
+</script>
+
+</body>
+</html>
